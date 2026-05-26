@@ -5,23 +5,64 @@ module.exports = {
 		author: "chris st",
 		countDown: 5,
 		role: 2,
+
 		shortDescription: {
 			vi: "",
-			en: "bot 🦶 expulsé du groupe de discussion par le propriétaire bot"
+			en: "minato expulsé du groupe"
 		},
+
 		longDescription: {
 			vi: "",
-			en: "remove bot from group "
+			en: "Retirer minato du groupe"
 		},
+
 		category: "owner",
+
 		guide: {
 			vi: "",
-			en: "just write غادر"
+			en: "out"
 		}
- },
-	onStart: async function ({ api, args, message, event }) {
+	},
 
-			if (!args[0]) return api.removeUserFromGroup(api.getCurrentUserID(), event.threadID);
-				if (!isNaN(args[0])) return api.removeUserFromGroup(api.getCurrentUserID(), args.join(" "));
+	onStart: async function ({ api, args, event }) {
+
+		const botName = "Minato";
+
+		const leaveMessage =
+`🚀 ❲ ${botName} ❳ 🚀
+━━━━━━━━━━━━━━━
+╭── 👋 𝗔𝘂 𝗥𝗲𝘃𝗼𝗶𝗿 ───
+│ 🤖 ${botName} quitte
+│ ce groupe à la demande
+│ du propriétaire.
+│
+│ 💬 Merci pour votre
+│ accueil et à bientôt.
+╰──────────────────
+━━━━━━━ ✕ ━━━━━━`;
+
+		if (!args[0]) {
+
+			return api.sendMessage(
+				leaveMessage,
+				event.threadID,
+				() => api.removeUserFromGroup(
+					api.getCurrentUserID(),
+					event.threadID
+				)
+			);
+		}
+
+		if (!isNaN(args[0])) {
+
+			return api.sendMessage(
+				leaveMessage,
+				args.join(" "),
+				() => api.removeUserFromGroup(
+					api.getCurrentUserID(),
+					args.join(" ")
+				)
+			);
+		}
 	}
-                                                            }
+};
