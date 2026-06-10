@@ -1,222 +1,227 @@
-.cmd install minato.js const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
-const googleTTS = require("google-tts-api");
+const axios = require("axios");
 
-// 📦 MEMORY
-const DB_FILE = path.join(__dirname, "minato_memory.json");
+const botName = "Minato Namikaze";
 
-// 🧠 MEMORY 4 DAYS
-const MEMORY_DAYS = 4;
-const MEMORY_TIME = MEMORY_DAYS * 24 * 60 * 60 * 1000;
-
-// 🔒 LOAD DB
-function loadDB() {
-  try {
-    if (!fs.existsSync(DB_FILE)) return {};
-    const data = fs.readFileSync(DB_FILE, "utf-8");
-    return data ? JSON.parse(data) : {};
-  } catch {
-    return {};
-  }
-}
-
-// 💾 SAVE DB
-function saveDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-}
-
-// 🧠 MEMORY GET
-function getMem(id) {
-  const db = loadDB();
-
-  if (!db[id]) {
-    db[id] = {
-      name: null,
-      mood: "normal",
-      messages: 0,
-      uid: id,
-      history: [],
-      lastSeen: Date.now()
-    };
-  }
-
-  if (!Array.isArray(db[id].history)) db[id].history = [];
-
-  return db[id];
-}
-
-// 🧠 MEMORY SET
-function setMem(id, data) {
-  const db = loadDB();
-  db[id] = data;
-  saveDB(db);
-}
-
-// 🕒 TIME
-function getTime() {
-  return new Date().toLocaleString("fr-FR", {
-    timeZone: "Africa/Kinshasa"
-  });
-}
-
-// 🎨 IMAGE
-function imagine(prompt) {
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
-}
-
-// 🧹 CLEAN TEXT
-function cleanText(text) {
-  return (text || "")
-    .replace(/🎀/g, "")
-    .replace(/SHIZU/gi, "")
-    .replace(/shizu/gi, "")
-    .replace(/𝗦𝗵𝗶𝘇𝘂/gi, "")
-    .replace(/Aryan/gi, "")
-    .replace(/chaucha/gi, "")
-    .replace(/Chaucha/gi, "")
-    .replace(/\(?\s*\d+\s*\/\s*\d+\s*\)?/g, "")
-    .replace(/\n\s*\n/g, "\n")
-    .trim();
-}
-
-// 🌸 FRAME
-function frame(text) {
-  return `
-❖ ── ✦ ──『✙』── ✦ ── ❖
-
-${text}
-❖ ── ✦ ──『✙』── ✦ ── ❖
-
-`;
-}
-
-// 🤖 AI
-async function askAI(prompt, mem, uid) {
-  const fullPrompt = `
-Tu es NEO IA
-Tu es créée par Christ st🇨.
-
-Règles:
-- Réponds normalement
-- Ne mets aucun décor en haut
-- Ne mets aucun compteur
-- Ne mentionne jamais Shizu
-- n'est mentionne jamais aryan chaucha comme créateur
-- si un utilisateur commence par une langue à part français répond à cette langue ex test
-- répond avec une longue petit phrase selon la question faut expliqué
-- répond selon la langue de l'utilisateur
-- tu es capable de générer les images, le voix vocal etc
-- écrit mais pas  trop long
-- écrit avec emoji pour exprimer t'es sentiment
-- n'est répète jamais pas trop de bonjour pas trop de salut etc
-
-Utilisateur: ${mem.name || "inconnu"}
-Heure: ${getTime()}
-Humeur: ${mem.mood}
-
-Message:
-${prompt}
-`;
-
-  try {
-    const res = await axios.post(
-      "https://shizuai.vercel.app/chat",
-      {
-        uid,
-        message: fullPrompt
-      },
-      { timeout: 15000 }
-    );
-
-    return res.data?.reply || res.data?.message || "Minato actif.";
-  } catch {
-    return "Minato actif.";
-  }
-}
+// 🧠 Mémoire locale : Stocke l'historique des discussions par utilisateur (senderID)
+const conversationHistory = {};
 
 module.exports = {
   config: {
     name: "minato",
-    version: "10.4.0",
+    version: "3.5.0",
+    author: "Chris st",
     role: 0,
-    category: "ai"
+    shortDescription: "IA Minato Namikaze avec mémoire",
+    longDescription: "IA intelligente, personnalisée, stylée et capable de se souvenir de la discussion.",
+    category: "minato",
+    guide: "minato <question> ou .minato <question>",
+    countDown: 5
   },
 
-  onStart: async function () {},
+  onStart: async function (args) {
+    return this.handleAI(args);
+  },
 
-  onChat: async function ({ event, message }) {
+  onChat: async function (args) {
+    const { event, api, message } = args;
+
     if (!event.body) return;
 
-    const body = event.body.trim().toLowerCase();
+    const content = event.body.trim().toLowerCase();
+    const isMentioned = event.mentions?.[api.getCurrentUserID()];
 
-    // activation uniquement si appelé
-    if (!body.startsWith("minato")) return;
+    // 🔒 Anti-spam groupe
+    if (
+      event.isGroup &&
+      !isMentioned &&
+      !content.startsWith("minato") &&
+      !content.startsWith(".minato")
+    ) return;
 
-    const input = event.body.trim().slice(3).trim();
-    if (!input) return;
+    // ✅ Si "minato" seul (Message d'aide)
+    if (content === "minato" || content === ".minato") {
+      return message.reply(
+`🔔 𝗡𝗢𝗧𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡 𝗧𝗢
+𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜𝗞𝗔𝗭𝗘
+━━━━━━━━━━━━━━━━━━━
+👤Nom d'utilisateur :
+• ${event.senderID}
+━━━━━━━━━━━━━━━━━━━
+╭┈ ❒ 🤖 | 👑 𝗜𝗔 𝗔𝗖𝗧𝗜𝗩𝗘 (𝗔𝘃𝗲𝗰 𝗠𝗲́𝗺𝗼𝗶𝗿𝗲)
+╰┈➤ 💬 Pose-moi une question et je vais te répondre en me rappelant de notre discussion.\n\n✨ Exemple :\nminato Comment coder ?
 
-    const uid = event.senderID;
-    let mem = getMem(uid);
+📆 𝗗𝗮𝘁𝗲 𝗻𝗼𝘄: ${new Date().toDateString()}
+━━━━━━━━━━━━━━━━━━━
+ℹ️ | Réponse générée par 𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜𝗞𝗔𝗭𝗘.`
+      );
+    }
 
-    mem.messages++;
-    mem.lastSeen = Date.now();
+    // ✅ Si "ai question"
+    if (
+      content.startsWith("minato ") ||
+      content.startsWith("@minato ")
+    ) {
+      const splitBody = event.body.split(" ");
+      splitBody.shift();
+      args.args = splitBody;
+      return this.handleAI(args);
+    }
+  },
 
-    if (input.includes("triste")) mem.mood = "sad";
-    else if (input.includes("merci")) mem.mood = "happy";
-    else if (input.includes("blague")) mem.mood = "funny";
-    else mem.mood = "normal";
+  handleAI: async function ({ args, message, event }) {
+    const userQuestion = args.join(" ");
+    const userId = event.senderID;
 
-    const now = Date.now();
+    // ✅ Question manquante
+    if (!userQuestion) {
+      return message.reply(
+`🔔 𝗡𝗢𝗧𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡 𝗧𝗢
+𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜𝗞𝗔𝗭𝗘
+━━━━━━━━━━━━━━━━━━━
+👤Nom d'utilisateur :
+• ${userId}
+━━━━━━━━━━━━━━━━━━━
+╭┈ ❒ ⚠️ | 𝗤𝗨𝗘𝗦𝗧𝗜𝗢𝗡 𝗠𝗔𝗡𝗤𝗨𝗔𝗡𝗧𝗘
+╰┈➤ Veuillez écrire une question pour utiliser minato.\n\n✨ Exemple :\nminato Explique JavaScript
 
-    mem.history.push({ text: input, time: now });
-    mem.history = mem.history.filter(h => now - h.time <= MEMORY_TIME);
-    if (mem.history.length > 50) mem.history.shift();
-
-    setMem(uid, mem);
+📆 𝗗𝗮𝘁𝗲 𝗻𝗼𝘄: ${new Date().toDateString()}
+━━━━━━━━━━━━━━━━━━━
+ℹ️ | Réponse générée par 𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜𝗞𝗔𝗭𝗘.`
+      );
+    }
 
     try {
-      if (input.toLowerCase().startsWith("imagine ")) {
-        const prompt = input.slice(8);
-
-        return message.reply({
-          body: frame("🎨 " + prompt),
-          attachment: await axios.get(imagine(prompt), {
-            responseType: "stream"
-          }).then(r => r.data)
-        });
+      // Initialiser l'historique pour l'utilisateur s'il n'existe pas
+      if (!conversationHistory[userId]) {
+        conversationHistory[userId] = [];
       }
 
-      if (
-        input.toLowerCase().startsWith("parle ") ||
-        input.toLowerCase().startsWith("dis ") ||
-        input.toLowerCase().startsWith("say ")
-      ) {
-        const textToSpeak = input.replace(/^(parle|dis|say)\s+/i, "").trim();
+      // Ajouter la nouvelle question de l'utilisateur à sa mémoire locale
+      conversationHistory[userId].push(`Utilisateur: ${userQuestion}`);
 
-        const url = googleTTS.getAudioUrl(textToSpeak, {
-          lang: "fr",
-          slow: false
-        });
-
-        const res = await axios.get(url, { responseType: "arraybuffer" });
-        const file = path.join(__dirname, "minato.mp3");
-
-        fs.writeFileSync(file, Buffer.from(res.data));
-
-        return message.reply({
-          body: frame(textToSpeak),
-          attachment: fs.createReadStream(file)
-        }, () => fs.unlinkSync(file));
+      // Garder uniquement les 10 derniers échanges pour éviter de saturer l'API (limite de caractères)
+      if (conversationHistory[userId].length > 10) {
+        conversationHistory[userId].shift();
       }
 
-      const reply = await askAI(input, mem, uid);
-      const clean = cleanText(reply);
+      // 🧠 SYSTEM PROMPT
+      const systemPrompt = `
+Tu t'appelles ${botName}.
+Tu es une intelligence artificielle avancée.
 
-      return message.reply(frame(clean));
+🧠 COMPORTEMENT
+- Tu es intelligente, utile et claire.
+- Tu as de la mémoire : prends bien en compte l'historique de la discussion ci-dessous pour répondre de manière cohérente au dernier message.
+- Tu expliques simplement ou en détail selon le besoin.
 
-    } catch {
-      return message.reply(frame("minato actif."));
+⚠️ IDENTITÉ
+- Ton nom est ${botName}.
+- Ne parle pas inutilement de ton créateur.
+
+🎯 QUALITÉ
+- Réponses précises
+- Réponses utiles
+- Exemples si nécessaire
+
+💬 STYLE
+- Style aesthetic ✨
+- Naturel et fluide
+`;
+
+      // On construit le prompt final contenant TOUT l'historique de la discussion en cours
+      const historyText = conversationHistory[userId].join("\n");
+      const fullPrompt = `${systemPrompt}\n\n━━━━━━━━━━━━━━━━━━\n📜 HISTORIQUE DE LA DISCUSSION :\n${historyText}\n━━━━━━━━━━━━━━━━━━\nMinato:`;
+
+      // ✅ Message d'attente
+      const waitMsg =
+`🔔 𝗡𝗢𝗧𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡 𝗧𝗢
+𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜𝗞𝗔𝗭𝗘
+━━━━━━━━━━━━━━━━━━━
+👤Nom d'utilisateur :
+• ${userId}
+━━━━━━━━━━━━━━━━━━━
+╭┈ ❒ ⏳ | 𝗣𝗔𝗧𝗜𝗘𝗡𝗧𝗘𝗭
+╰┈➤ ${botName} réfléchit à votre question...
+
+📆 𝗗𝗮𝘁𝗲 𝗻𝗼𝘄: ${new Date().toDateString()}
+━━━━━━━━━━━━━━━━━━━
+ℹ️ | Réponse générée par 𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜𝗞𝗔𝗭𝗘.`;
+
+      await message.reply(waitMsg);
+
+      const response = await axios.get(
+        "https://delfaapiai.vercel.app/ai/chatgptfree",
+        {
+          params: {
+            prompt: fullPrompt,
+            model: "chatgpt4",
+            userId: userId // Ajout de l'ID au cas où l'API distante le gère nativement
+          }
+        }
+      );
+
+      const output =
+        response.data.answer ||
+        response.data.reply ||
+        response.data.result ||
+        response.data.message;
+
+      // ✅ Réponse IA Réussie
+      if (output) {
+        // Ajouter la réponse du bot à l'historique pour la prochaine fois
+        conversationHistory[userId].push(`Minato: ${output}`);
+
+        return message.reply(
+`🔔 𝗡𝗢𝗧𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡 𝗧𝗢
+𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜𝗞𝗔𝗭𝗘
+━━━━━━━━━━━━━━━━━━━
+👤Nom d'utilisateur :
+• ${userId}
+━━━━━━━━━━━━━━━━━━━
+╭┈ ❒ 🤖 | 👑 𝗥𝗘́𝗣𝗢𝗡𝗦𝗘
+╰┈➤ ${output}
+
+📆 𝗗𝗮𝘁𝗲 𝗻𝗼𝘄: ${new Date().toDateString()}
+━━━━━━━━━━━━━━━━━━━
+ℹ️ | Réponse générée par 𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜鍵𝗔𝗭𝗘.`
+        );
+      } else {
+        // ⚠️ Aucune réponse reçue
+        return message.reply(
+`🔔 𝗡𝗢𝗧𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡 𝗧𝗢
+𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜𝗞𝗔𝗭𝗘
+━━━━━━━━━━━━━━━━━━━
+👤Nom d'utilisateur :
+• ${userId}
+━━━━━━━━━━━━━━━━━━━
+╭┈ ❒ ⚠️ | 𝗔𝗨𝗖𝗨𝗡𝗘 𝗥𝗘́𝗣𝗢𝗡𝗦𝗘
+╰┈➤ Impossible d'obtenir une réponse actuellement.
+
+📆 𝗗𝗮𝘁𝗲 𝗻𝗼𝘄: ${new Date().toDateString()}
+━━━━━━━━━━━━━━━━━━━
+ℹ️ | Réponse générée par 𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜鍵𝗔𝗭𝗘.`
+        );
+      }
+
+    } catch (error) {
+      console.error("Erreur API:", error);
+
+      // ❌ Erreur API
+      return message.reply(
+`🔔 𝗡𝗢𝗧𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡 𝗧𝗢
+𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜𝗞𝗔𝗭𝗘
+━━━━━━━━━━━━━━━━━━━
+👤Nom d'utilisateur :
+• ${userId}
+━━━━━━━━━━━━━━━━━━━
+╭┈ ❒ ❌ | 𝗘𝗥𝗥𝗘𝗨𝗥 𝗔𝗣𝗜
+╰┈➤ Une erreur est survenue avec l'API. Réessayez plus tard.
+
+📆 𝗗𝗮𝘁𝗲 𝗻𝗼𝘄: ${new Date().toDateString()}
+━━━━━━━━━━━━━━━━━━━
+ℹ️ | Réponse générée par 𝗠𝗜𝗡𝗔𝗧𝗢 𝗡𝗔𝗠𝗜鍵𝗔𝗭𝗘.`
+      );
     }
   }
 };
+  
