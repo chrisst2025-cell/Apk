@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-async function toFont(text, id = 3) {
+async function toFont(text, id = 22) {
   try {
     const GITHUB_RAW = "https://raw.githubusercontent.com/Saim-x69x/sakura/main/ApiUrl.json";
     const rawRes = await axios.get(GITHUB_RAW);
@@ -17,30 +17,30 @@ async function toFont(text, id = 3) {
 
 module.exports = {
   config: {
-    name: "wbquiz",
-    aliases: ["windbreakerquiz", "wbqz", "windbreakerqz"],
+    name: "animequiz",
+    aliases: ["animeqz", "aniquiz", "aniqz"],
     version: "1.0",
     author: "Saimx69x",
     countDown: 10,
     role: 0,
     category: "game",
-    guide: { en: "{pn} — Windbreaker character guessing quiz" }
+    guide: { en: "{pn} — Guess the anime character!" }
   },
 
-  onStart: async function ({ api, event, usersData }) {
+  onStart: async function ({ api, event }) {
     try {
       const GITHUB_RAW = "https://raw.githubusercontent.com/Saim-x69x/sakura/main/ApiUrl.json";
       const rawRes = await axios.get(GITHUB_RAW);
       const quizApiBase = rawRes.data.apiv1;
 
-      const { data } = await axios.get(`${quizApiBase}/api/windbreakerqz`);
+      const { data } = await axios.get(`${quizApiBase}/api/animequiz`);
       const { image, options, answer } = data;
 
       const imageStream = await axios({ method: "GET", url: image, responseType: "stream" });
 
-      const body = await toFont(`🌸 𝐖𝐢𝐧𝐝𝐛𝐫𝐞𝐚𝐤𝐞𝐫 𝐐𝐮𝐢𝐳 ⚡
+      const body = await toFont(`🎌 𝐀𝐧𝐢𝐦𝐞 𝐐𝐮𝐢𝐳 🎭
 ━━━━━━━━━━━━━━
-📷 Guess the wind breaker character!
+📷 Guess the Anime Character!
 
 🅐 ${options.A}
 🅑 ${options.B}
@@ -54,7 +54,7 @@ module.exports = {
         { body, attachment: imageStream.data },
         event.threadID,
         async (err, info) => {
-          if (err) return;
+          if (err) return console.error(err);
 
           global.GoatBot.onReply.set(info.messageID, {
             commandName: this.config.name,
@@ -71,10 +71,8 @@ module.exports = {
             if (quizData && !quizData.answered) {
               try {
                 await api.unsendMessage(info.messageID);
-                global.GoatBot.onReply.delete(info.messageID);
-              } catch (e) {
-                console.error("Failed to unsend quiz message:", e.message);
-              }
+              } catch {}
+              global.GoatBot.onReply.delete(info.messageID);
             }
           }, 90000);
         },
@@ -82,7 +80,7 @@ module.exports = {
       );
     } catch (err) {
       console.error(err);
-      const failMsg = await toFont("❌ Failed to fetch Windbreaker quiz data.");
+      const failMsg = await toFont("❌ Failed to fetch Anime Quiz data.");
       api.sendMessage(failMsg, event.threadID, event.messageID);
     }
   },
@@ -102,22 +100,24 @@ module.exports = {
     }
 
     if (reply === correctAnswer) {
-      await api.unsendMessage(messageID);
+      try {
+        await api.unsendMessage(messageID);
+      } catch {}
 
-      const rewardCoin = 400;
-      const rewardExp = 150;
-      const userData = await usersData.get(event.senderID);
+      const rewardCoin = 350;
+      const rewardExp = 120;
+      const userData = (await usersData.get(event.senderID)) || { money: 0, exp: 0 };
       userData.money += rewardCoin;
       userData.exp += rewardExp;
       await usersData.set(event.senderID, userData);
 
-      const correctMsg = await toFont(`🌸 You answered correctly! 🎉
+      const correctMsg = await toFont(`🎯 Sugoi! You guessed it right!
 
-✅ Correct answer!
+✅ Correct Answer!
 💰 +${rewardCoin} Coins
 🌟 +${rewardExp} EXP
 
-🔥 Sakura Haruka approves your skills!`);
+🏆 You're a true anime fan!`);
 
       if (global.GoatBot.onReply.has(messageID)) {
         global.GoatBot.onReply.get(messageID).answered = true;
@@ -134,8 +134,10 @@ module.exports = {
 ⏳ You still have ${chances} chance(s) left. Try again!`);
         return api.sendMessage(wrongTryMsg, event.threadID, event.messageID);
       } else {
-        await api.unsendMessage(messageID);
-        const wrongMsg = await toFont(`🥺 Out of chances!
+        try {
+          await api.unsendMessage(messageID);
+        } catch {}
+        const wrongMsg = await toFont(`😢 Out of chances!
 ✅ The correct option was: ${correctAnswer}`);
         return api.sendMessage(wrongMsg, event.threadID, event.messageID);
       }
