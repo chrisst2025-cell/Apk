@@ -14,9 +14,9 @@
 	"notesLanguage": "change to your language with ISO 639-1 code, available languages: vi (Vietnamese), en (English)",
 	"nickNameBot": "⤾➝➤🥷 𝙼𝚒𝚗𝚊𝚝𝚘 𝚔𝚊𝚖𝚒𝚔𝚊𝚣𝚎🌀",
 	"prefix": ".",
-  "adminPrefix": "@",
-  "devPrefix": "/",
-  "noPrefix": "adminOnly",
+    "adminPrefix": "@",
+    "devPrefix": "/",
+    "noPrefix": "adminOnly",
 	"adminOnly": {
 		"enable": false,
 		"ignoreCommand": []
